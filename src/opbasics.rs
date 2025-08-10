@@ -1,7 +1,7 @@
 pub use crate::buffer::*;
-pub use crate::pipeline::*;
-pub use crate::hasher::*;
 pub use crate::color_conversions::*;
-pub use rawloader::{RawImage, CFA, Orientation, RawImageData};
-pub use std::sync::Arc;
+pub use crate::hasher::*;
+pub use crate::pipeline::*;
+pub use rawloader2::{CFA, Orientation, RawImage, RawImageData};
 pub use std::cmp;
+pub use std::sync::Arc;

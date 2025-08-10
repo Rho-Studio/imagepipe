@@ -1,7 +1,7 @@
-pub mod gofloat;
-pub mod demosaic;
 pub mod colorspaces;
 pub mod curves;
+pub mod demosaic;
 pub mod gamma;
-pub mod transform;
+pub mod gofloat;
 pub mod rotatecrop;
+pub mod transform;

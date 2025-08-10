@@ -1,34 +1,31 @@
 [package]
-name = "imagepipe"
+name = "imagepipe2"
 version = "0.5.0"
-authors = ["Pedro Côrte-Real <pedro@pedrocr.net>"]
+authors = ["Pedro Côrte-Real <pedro@pedrocr.net>", "Anshul Sanghi <anshul@anshulsanghi.tech>"]
 description = "An image processing pipeline"
 documentation = "https://docs.rs/imagepipe/"
-#homepage = "..."
-repository = "https://github.com/pedrocr/imagepipe"
+repository = "https://github.com/Rho-Studio/imagepipe.git"
 license = "LGPL-3.0-only"
 categories = ["multimedia::images"]
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 lazy_static = "1"
 rayon = "1"
 serde = "1"
 serde_derive = "1"
-serde_yaml = "0.8"
-bincode = "1"
+serde_yaml = "0.9"
+bincode = { version = "2", features = ["serde"] }
 blake3 = "1"
 log = "0.4"
 num-traits = "0.2"
-image = "0.24"
+image = "0.25"
 
-[dependencies.rawloader]
-version = "0.37"
-path = "../rawloader"
+[dependencies.rawloader2]
+git = "https://github.com/Rho-Studio/rawloader.git"
 
 [dependencies.multicache]
-version = "0.6.0"
-path = "../multicache"
+version = "0.6.1"
 
 [profile.dev]
 opt-level = 3
