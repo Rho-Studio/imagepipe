@@ -102,7 +102,7 @@ pub fn full(cfa: CFA, buf: &OpBuffer) -> OpBuffer {
     out.mutate_lines(
         &(|line: &mut [f32], row| {
             for (col, pix) in line.chunks_exact_mut(4).enumerate() {
-                let ref colors = lookups[row % 48][col % 48];
+                let colors = &lookups[row % 48][col % 48];
                 let mut sums = [0f32; 5];
                 let mut counts = [0f32; 5];
 

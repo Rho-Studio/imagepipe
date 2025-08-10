@@ -41,7 +41,7 @@ pub type OtherImage = DynamicImage;
 
 #[derive(Debug, Clone)]
 pub enum ImageSource {
-    Raw(RawImage),
+    Raw(Box<RawImage>),
     Other(OtherImage),
 }
 
@@ -79,12 +79,12 @@ pub trait ImageOp<'a>: Debug + Serialize + Deserialize<'a> {
     }
     fn hash(&self, hasher: &mut BufHasher) {
         // Hash the name first as a zero sized struct doesn't actually do any hashing
-        hasher.write(self.name().as_bytes()).unwrap();
-        hasher.from_serialize(self);
+        hasher.write_all(self.name().as_bytes()).unwrap();
+        hasher.encode_into_std_write(self);
     }
     fn shash(&self) -> BufHash {
         let mut selfhasher = BufHasher::new();
-        selfhasher.from_serialize(self);
+        selfhasher.encode_into_std_write(self);
         selfhasher.result()
     }
     // What size is the output the operation creates given its input
@@ -124,7 +124,7 @@ impl PipelineSettings {
 
 impl PipelineSettings {
     fn hash(&self, hasher: &mut BufHasher) {
-        hasher.from_serialize(self);
+        hasher.encode_into_std_write(self);
     }
 }
 
@@ -158,14 +158,14 @@ pub struct PipelineOps {
 impl PipelineOps {
     fn new(img: &ImageSource) -> Self {
         Self {
-            gofloat: gofloat::OpGoFloat::new(&img),
-            demosaic: demosaic::OpDemosaic::new(&img),
-            rotatecrop: rotatecrop::OpRotateCrop::new(&img),
-            tolab: colorspaces::OpToLab::new(&img),
-            basecurve: curves::OpBaseCurve::new(&img),
-            fromlab: colorspaces::OpFromLab::new(&img),
-            gamma: gamma::OpGamma::new(&img),
-            transform: transform::OpTransform::new(&img),
+            gofloat: gofloat::OpGoFloat::new(img),
+            demosaic: demosaic::OpDemosaic::new(img),
+            rotatecrop: rotatecrop::OpRotateCrop::new(img),
+            tolab: colorspaces::OpToLab::new(img),
+            basecurve: curves::OpBaseCurve::new(img),
+            fromlab: colorspaces::OpFromLab::new(img),
+            gamma: gamma::OpGamma::new(img),
+            transform: transform::OpTransform::new(img),
         }
     }
 }
@@ -173,9 +173,9 @@ impl PipelineOps {
 impl PartialEq for PipelineOps {
     fn eq(&self, other: &Self) -> bool {
         let mut selfhasher = BufHasher::new();
-        selfhasher.from_serialize(self);
+        selfhasher.encode_into_std_write(self);
         let mut otherhasher = BufHasher::new();
-        otherhasher.from_serialize(other);
+        otherhasher.encode_into_std_write(other);
         selfhasher.result() == otherhasher.result()
     }
 }
@@ -183,24 +183,52 @@ impl Eq for PipelineOps {}
 impl Hash for PipelineOps {
     fn hash<H: Hasher>(&self, state: &mut H) {
         let mut selfhasher = BufHasher::new();
-        selfhasher.from_serialize(self);
+        selfhasher.encode_into_std_write(self);
         selfhasher.result().hash(state);
     }
 }
 
 macro_rules! for_vals {
-  ([$($val:expr),*] |$x:pat, $i:ident| $body:expr) => {
-    let mut pos = 0;
-    $({
-      let $x = $val;
-      pos += 1;
-      let $i = pos-1;
-      $body
-    })*
-  }
+    (mut [$($val:expr),*] |$x:pat, $i:ident| $body:expr) => {
+        let mut pos = 0;
+        $({
+          let $x = &mut $val;
+          pos += 1;
+          let $i = pos-1;
+          $body
+        })*
+    };
+
+    ([$($val:expr),*] |$x:pat, $i:ident| $body:expr) => {
+        let mut pos = 0;
+        $({
+          let $x = &$val;
+          pos += 1;
+          let $i = pos-1;
+          $body
+        })*
+    };
 }
 
 macro_rules! all_ops {
+    (mut $ops:expr, |$x:pat, $i:ident| $body:expr) => {
+        for_vals!(
+            mut
+            [
+                $ops.gofloat,
+                $ops.demosaic,
+                $ops.rotatecrop,
+                $ops.tolab,
+                $ops.basecurve,
+                $ops.fromlab,
+                $ops.gamma,
+                $ops.transform
+            ] |$x, $i| {
+                $body
+            }
+        );
+    };
+
     ($ops:expr, |$x:pat, $i:ident| $body:expr) => {
         for_vals!(
             [
@@ -212,13 +240,32 @@ macro_rules! all_ops {
                 $ops.fromlab,
                 $ops.gamma,
                 $ops.transform
-            ] | $x,
-            $i | { $body }
+            ] |$x, $i| {
+                $body
+            }
         );
     };
 }
 
 macro_rules! all_ops_reverse {
+    (mut $ops:expr, |$x:pat, $i:ident| $body:expr) => {
+        for_vals!(
+            mut
+            [
+                $ops.transform,
+                $ops.gamma,
+                $ops.fromlab,
+                $ops.basecurve,
+                $ops.tolab,
+                $ops.rotatecrop,
+                $ops.demosaic,
+                $ops.gofloat
+            ] |$x, $i| {
+                $body
+            }
+        );
+    };
+
     ($ops:expr, |$x:pat, $i:ident| $body:expr) => {
         for_vals!(
             [
@@ -230,8 +277,9 @@ macro_rules! all_ops_reverse {
                 $ops.rotatecrop,
                 $ops.demosaic,
                 $ops.gofloat
-            ] | $x,
-            $i | { $body }
+            ] |$x, $i| {
+                $body
+            }
         );
     };
 }
@@ -256,7 +304,7 @@ impl Pipeline {
     pub fn new_from_file<P: AsRef<Path>>(path: P) -> Result<Pipeline, String> {
         do_timing!("total new_from_file()", {
             if let Ok(img) = do_timing!("  rawloader2", rawloader2::decode_file(&path)) {
-                Self::new_from_source(ImageSource::Raw(img))
+                Self::new_from_source(ImageSource::Raw(Box::new(img)))
             } else if let Ok(img) = do_timing!("  image::open", image::open(&path)) {
                 Self::new_from_source(ImageSource::Other(img))
             } else {
@@ -308,13 +356,13 @@ impl Pipeline {
     pub fn run(&mut self, cache: Option<&PipelineCache>) -> Arc<OpBuffer> {
         do_timing!("  total pipeline", {
             // Reset all ops to make sure we're starting clean
-            all_ops!(self.ops, |ref mut op, _i| {
+            all_ops!(mut self.ops, |op, _i| {
                 op.reset();
             });
             // Calculate what size of image we should scale down to at the demosaic stage
             let mut width = self.globals.image.width();
             let mut height = self.globals.image.height();
-            all_ops!(self.ops, |ref mut op, _i| {
+            all_ops!(mut self.ops, |op, _i| {
                 let (w, h) = op.transform_forward(width, height);
                 width = w;
                 height = h;
@@ -325,7 +373,7 @@ impl Pipeline {
             let (mut width, mut height) =
                 crate::scaling::scaling_size(width, height, maxwidth, maxheight);
             log::debug!("Final image size is {}x{}", width, height);
-            all_ops_reverse!(self.ops, |ref mut op, _i| {
+            all_ops_reverse!(mut self.ops, |op, _i| {
                 let (w, h) = op.transform_reverse(width, height);
                 width = w;
                 height = h;
@@ -343,22 +391,21 @@ impl Pipeline {
             // Start with a dummy buffer as gofloat doesn't use it
             let mut bufin = Arc::new(OpBuffer::default());
             // Find the hashes of all ops
-            all_ops!(self.ops, |ref op, i| {
+            all_ops!(self.ops, |op, i| {
                 op.hash(&mut hasher);
                 let result = hasher.result();
                 ophashes.push(result);
 
                 // Set the latest op for which we already have the calculated buffer
-                if let Some(cache) = cache {
-                    if let Some(buffer) = cache.get(&result) {
+                if let Some(cache) = cache
+                    && let Some(buffer) = cache.get(&result) {
                         bufin = buffer;
                         startpos = i + 1;
                     }
-                }
             });
 
             // Do the operations, starting for the last we have a cached buffer for
-            all_ops!(self.ops, |ref op, i| {
+            all_ops!(self.ops, |op, i| {
                 if i >= startpos {
                     let opstr = "    ".to_string() + op.name();
                     bufin = do_timing!(&opstr, op.run(&self.globals, bufin.clone()));
@@ -379,8 +426,8 @@ impl Pipeline {
         // If the image is raster and we haven't changed it yet there's no need to go
         // through the whole pipeline. Just go straight to 8bit using the image
         // crate and resize if needed
-        if let ImageSource::Other(ref image) = self.globals.image {
-            if self.globals.settings.use_fastpath && self.default_ops() {
+        if let ImageSource::Other(ref image) = self.globals.image
+            && self.globals.settings.use_fastpath && self.default_ops() {
                 return Ok(do_timing!("total output_8bit_fastpath()", {
                     let rgb = image.to_rgb8();
                     let (width, height) = (rgb.width() as usize, rgb.height() as usize);
@@ -402,14 +449,13 @@ impl Pipeline {
                     }
                 }));
             }
-        }
 
         do_timing!("total output_8bit()", {
             self.globals.settings.linear = false;
             let buffer = self.run(cache);
 
             let image = do_timing!("  8 bit conversion", {
-                let mut image = vec![0 as u8; buffer.width * buffer.height * 3];
+                let mut image = vec![0_u8; buffer.width * buffer.height * 3];
                 for (o, i) in image.chunks_exact_mut(1).zip(buffer.data.iter()) {
                     o[0] = output8bit(*i);
                 }
@@ -428,8 +474,8 @@ impl Pipeline {
         // If the image is raster and we haven't changed it yet there's no need to go
         // through the whole pipeline. Just go straight to 16bit using the image
         // crate and resize if needed
-        if let ImageSource::Other(ref image) = self.globals.image {
-            if self.globals.settings.use_fastpath && self.default_ops() {
+        if let ImageSource::Other(ref image) = self.globals.image
+            && self.globals.settings.use_fastpath && self.default_ops() {
                 return Ok(do_timing!("total output_16bit_fastpath()", {
                     let rgb = image.to_rgb16();
                     let (width, height) = (rgb.width() as usize, rgb.height() as usize);
@@ -451,14 +497,13 @@ impl Pipeline {
                     }
                 }));
             }
-        }
 
         do_timing!("total output_16bit()", {
             self.globals.settings.linear = true;
             let buffer = self.run(cache);
 
             let image = do_timing!("  8 bit conversion", {
-                let mut image = vec![0 as u16; buffer.width * buffer.height * 3];
+                let mut image = vec![0_u16; buffer.width * buffer.height * 3];
                 for (o, i) in image.chunks_exact_mut(1).zip(buffer.data.iter()) {
                     o[0] = output16bit(*i);
                 }

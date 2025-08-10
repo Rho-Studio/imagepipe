@@ -156,7 +156,7 @@ impl OpGoFloat {
                                 .chunks_exact_mut(4)
                                 .zip(data[owidth * (row + y) + x..].chunks_exact(1))
                             {
-                                let val = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+                                let val = ((i[0] - mins[0]) / ranges[0]).min(1.0);
                                 o[0] = val;
                                 o[1] = val;
                                 o[2] = val;
@@ -174,9 +174,9 @@ impl OpGoFloat {
                                 .chunks_exact_mut(4)
                                 .zip(data[(owidth * (row + y) + x) * 3..].chunks_exact(3))
                             {
-                                o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
-                                o[1] = ((i[1] as f32 - mins[1]) / ranges[1]).min(1.0);
-                                o[2] = ((i[2] as f32 - mins[2]) / ranges[2]).min(1.0);
+                                o[0] = ((i[0] - mins[0]) / ranges[0]).min(1.0);
+                                o[1] = ((i[1] - mins[1]) / ranges[1]).min(1.0);
+                                o[2] = ((i[2] - mins[2]) / ranges[2]).min(1.0);
                                 o[3] = 0.0;
                             }
                         }),
@@ -190,7 +190,7 @@ impl OpGoFloat {
                                 .chunks_exact_mut(1)
                                 .zip(data[owidth * (row + y) + x..].chunks_exact(1))
                             {
-                                o[0] = ((i[0] as f32 - mins[0]) / ranges[0]).min(1.0);
+                                o[0] = ((i[0] - mins[0]) / ranges[0]).min(1.0);
                             }
                         }),
                     );

@@ -32,13 +32,13 @@ impl<'a> ImageOp<'a> for OpBaseCurve {
         "basecurve"
     }
     fn run(&self, _pipeline: &PipelineGlobals, buf: Arc<OpBuffer>) -> Arc<OpBuffer> {
-        if self.points.len() == 0 && self.exposure.abs() < 0.001 {
+        if self.points.is_empty() && self.exposure.abs() < 0.001 {
             return buf;
         }
 
         let mut final_points = self.points.clone();
         for (_, to) in final_points.iter_mut() {
-            *to = *to * self.exposure.exp2();
+            *to *= self.exposure.exp2();
         }
         let func = SplineFunc::new(&final_points);
 
@@ -69,11 +69,11 @@ impl SplineFunc {
     // Monotone cubic interpolation code adapted from the Javascript example in Wikipedia
     pub fn new(p: &[(f32, f32)]) -> SplineFunc {
         let mut points = Vec::new();
-        if p.len() == 0 || (p[0].0 > 0.0 && p[0].1 > 0.0) {
+        if p.is_empty() || (p[0].0 > 0.0 && p[0].1 > 0.0) {
             points.push((0.0, 0.0));
         }
         points.extend_from_slice(p);
-        if p.len() == 0 || (p[p.len() - 1].0 < 1.0 && p[p.len() - 1].1 < 1.0) {
+        if p.is_empty() || (p[p.len() - 1].0 < 1.0 && p[p.len() - 1].1 < 1.0) {
             points.push((1.0, 1.0));
         }
 
@@ -118,10 +118,10 @@ impl SplineFunc {
         }
 
         SplineFunc {
-            points: points,
-            c1s: c1s,
-            c2s: c2s,
-            c3s: c3s,
+            points,
+            c1s,
+            c2s,
+            c3s,
         }
     }
 

@@ -1,6 +1,5 @@
 use serde::Serialize;
 
-use std;
 use std::fmt;
 use std::fmt::Debug;
 use std::io::Write;
@@ -13,6 +12,12 @@ pub type BufHash = [u8; HASHSIZE];
 pub struct BufHasher {
     hash: HashType,
 }
+impl Default for BufHasher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BufHasher {
     pub fn new() -> BufHasher {
         BufHasher {
@@ -40,7 +45,7 @@ impl Write for BufHasher {
 }
 
 impl BufHasher {
-    pub fn from_serialize<T>(&mut self, obj: &T)
+    pub fn encode_into_std_write<T>(&mut self, obj: &T)
     where
         T: Serialize,
     {

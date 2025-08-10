@@ -137,8 +137,8 @@ where
                 let center_x = center_x + (skip_x_x * col as f32) + (skip_x_x / 2.0);
                 let center_y = center_y + (skip_x_y * col as f32) + (skip_x_y / 2.0);
 
-                let mut sums = [0.0 as f32; 4];
-                let mut counts = [0.0 as f32; 4];
+                let mut sums = [0.0_f32; 4];
+                let mut counts = [0.0_f32; 4];
                 for y in from_y..=to_y {
                     for x in from_x..=to_x {
                         // FIXME: Hopefully this is a reasonable low-pass filter that works for

@@ -62,9 +62,11 @@ impl OpToLab {
         let xyz = [xyz[0], xyz[1] / tint, xyz[2]];
         for i in 0..4 {
             self.wb_coeffs[i] = 0.0;
-            for j in 0..3 {
-                self.wb_coeffs[i] += self.xyz_to_cam[i][j] * xyz[j];
+
+            for (j, channel) in xyz.iter().enumerate() {
+                self.wb_coeffs[i] += self.xyz_to_cam[i][j] * channel;
             }
+
             self.wb_coeffs[i] = self.wb_coeffs[i].recip();
         }
         self.wb_coeffs = normalize_wbs(self.wb_coeffs);
@@ -72,14 +74,15 @@ impl OpToLab {
 
     pub fn get_temp(&self) -> (f32, f32) {
         let mut xyz = [0.0; 3];
-        for i in 0..3 {
-            for j in 0..4 {
-                let mul = self.wb_coeffs[j];
-                if mul > 0.0 {
-                    xyz[i] += self.cam_to_xyz[i][j] / mul;
+
+        for (i, channel) in xyz.iter_mut().enumerate() {
+            for (j, item) in self.wb_coeffs.iter().enumerate() {
+                if *item > 0.0 {
+                    *channel += self.cam_to_xyz[i][j] / *item;
                 }
             }
         }
+
         let (temp, tint) = xyz_to_temp(xyz);
         (temp, tint)
     }

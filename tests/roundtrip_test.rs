@@ -1,4 +1,4 @@
-use imagepipe::{Pipeline, ImageSource};
+use imagepipe2::{Pipeline, ImageSource};
 use image::{ImageBuffer, DynamicImage};
 
 fn roundtrip_8bit(fast: bool) {

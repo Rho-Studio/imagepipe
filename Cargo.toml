@@ -33,3 +33,8 @@ opt-level = 3
 [[bin]]
 name = "converter"
 doc = false
+
+[lints.clippy]
+upper_case_acronyms = { level = "allow", priority = 1 }
+too_many_arguments = { level = "allow", priority = 1 }
+inherent_to_string_shadow_display = { level = "allow", priority = 1 }

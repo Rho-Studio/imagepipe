@@ -1,4 +1,4 @@
-use imagepipe::{Pipeline, ImageSource, Rotation};
+use imagepipe2::{Pipeline, ImageSource, Rotation};
 use image::{RgbImage, DynamicImage};
 
 fn create_pipeline() -> Pipeline {

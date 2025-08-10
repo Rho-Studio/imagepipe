@@ -22,11 +22,11 @@ impl OpBuffer {
 
     pub fn new(width: usize, height: usize, colors: usize, monochrome: bool) -> OpBuffer {
         OpBuffer {
-            width: width,
-            height: height,
-            colors: colors,
+            width,
+            height,
+            colors,
             monochrome,
-            data: vec![0.0; width * height * (colors as usize)],
+            data: vec![0.0; width * height * colors],
         }
     }
 
@@ -118,7 +118,7 @@ impl OpBuffer {
                     'B' => (0.0, 0.0, 1.0),
                     'O' => (1.0, 1.0, 1.0),
                     ' ' => (0.0, 0.0, 0.0),
-                    c @ _ => panic!("Invalid color '{}' sent to rgb expected any of 'RGBO '", c),
+                    c => panic!("Invalid color '{}' sent to rgb expected any of 'RGBO '", c),
                 };
 
                 pixel_data.push(r);
@@ -128,9 +128,9 @@ impl OpBuffer {
         }
 
         OpBuffer {
-            width: width,
-            height: height,
-            colors: colors,
+            width,
+            height,
+            colors,
             monochrome: false,
             data: pixel_data,
         }

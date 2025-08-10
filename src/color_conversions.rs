@@ -4,7 +4,7 @@ lazy_static! {
     pub static ref SRGB_D65_33: [[f32; 3]; 3] = [
         [0.4124564, 0.3575761, 0.1804375],
         [0.2126729, 0.7151522, 0.0721750],
-        [0.0193339, 0.1191920, 0.9503041],
+        [0.0193339, 0.119_192, 0.9503041],
     ];
     pub static ref SRGB_D65_XYZ_WHITE: (f32, f32, f32) = (0.95047, 1.000, 1.08883);
     pub static ref XYZ_D65_33: [[f32; 3]; 3] = inverse(*SRGB_D65_33);
@@ -102,10 +102,10 @@ impl TransformLookup {
     }
 
     fn lookup(&self, val: f32) -> f32 {
-        if val < 0.0 || val > 1.0 {
+        if !(0.0..=1.0).contains(&val) {
             (self.transform)(val)
         } else {
-            let pos = val * self.max as f32;
+            let pos = val * self.max;
             let key = pos as usize;
             let base = pos.trunc();
             let a = pos - base;
@@ -337,12 +337,12 @@ pub fn input16bit(v: u16) -> f32 {
 
 #[inline(always)]
 pub fn output8bit(v: f32) -> u8 {
-    (v * 256.0).max(0.0).min(255.0) as u8
+    (v * 256.0).clamp(0.0, u8::MAX as f32) as u8
 }
 
 #[inline(always)]
 pub fn output16bit(v: f32) -> u16 {
-    (v * 65535.0).round().max(0.0).min(65535.0) as u16
+    (v * 65535.0).round().clamp(0.0, u16::MAX as f32) as u16
 }
 
 #[cfg(test)]
