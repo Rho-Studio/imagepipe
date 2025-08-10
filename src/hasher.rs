@@ -49,6 +49,6 @@ impl BufHasher {
     where
         T: Serialize,
     {
-        bincode::serde::encode_into_std_write(obj, self, bincode::config::legacy()).unwrap();
+        bincode::serialize_into(self, obj).unwrap();
     }
 }
